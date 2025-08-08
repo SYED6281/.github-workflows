@@ -1,38 +1,23 @@
-name: Deploy Apache to EC2
+name: Setup Apache on EC2
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
-  deploy:
+  install-apache:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Set up SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/Apache.pem
-          chmod 400 ~/.ssh/Apache.pem
-
-      - name: Add EC2 IP to known hosts
-        run: ssh-keyscan -H 43.204.148.159 >> ~/.ssh/known_hosts
-
-      - name: Install Apache and Deploy HTML
-        run: |
-          ssh -i ~/.ssh/Apache.pem ubuntu@43.204.148.159 << 'EOF'
+      - name: Install Apache on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
             sudo apt update
-            sudo apt install apache2 -y
-            sudo systemctl start apache2
-            sudo systemctl enable apache2
-          EOF
-
-          scp -i ~/.ssh/Apache.pem new.html ubuntu@43.204.148.159:/tmp/
+            sudo apt install -y apache2
+            sudo systemctl enable --now apache2
           
-          ssh -i ~/.ssh/Apache.pem ubuntu@43.204.148.159 << 'EOF'
-            sudo mv /tmp/new.html /var/www/html/index.html
-          EOF
